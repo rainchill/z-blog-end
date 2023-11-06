@@ -1,0 +1,23 @@
+{
+  "name": "z-blog-backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Rainchill",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.1",
+    "express": "^4.18.2",
+    "mockjs": "^1.1.0",
+    "multer": "*",
+    "sequelize": "^6.33.0",
+    "sqlite3": "^5.1.6"
+  },
+  "description": "",
+  "devDependencies": {
+    "cors": "^2.8.5"
+  }
+}
