@@ -4,7 +4,7 @@ const cors = require('cors')
 var bodyParser = require('body-parser')
 var multer = require('multer')
 const path = require('path')
-const upload = multer({ dest: path.join(__dirname, '/uploads') })
+const upload = multer({ dest: path.join(__dirname, '/upload') })
 
 var app = express()
 //处理跨域问题
@@ -50,6 +50,22 @@ Articles.sync()
 const t = Articles.build({ ztitle: "asdadad" });
 t.save()
 
+ret = Articles.findAll({
+    attributes: ['ztitle'],
+    raw: true
+})
+
+
+async function getArticleslist(obj) {
+    // 查询所有用户
+    const articles = await Articles.findAll();
+    for( p of articles ) {
+        obj.articleslist.push(p.dataValues.ztitle)
+    }
+}
+
+// setTimeout(function(){ console.log('----art=', articleslist) }, 1000);
+
 console.log("save success!")
 
 app.get('/articles', function (req, res) {
@@ -74,13 +90,18 @@ app.get('/articles/:id', function (req, res) {
     }))
 })
 
-app.post('/files',  upload.single('file'), function (req, res) {
+app.post('/api/admin/uploadfile',  upload.single('file'), function (req, res) {
     res.send({ file: "ok" })
     console.log("req.body:", req.file.originalname)
 })
 
 app.get('/api/admin/articleslist', function (req, res) {
-    
+
+    x = { articleslist:[] }
+    getArticleslist(x).then(() => {
+        res.send(JSON.stringify(x.articleslist))
+    })
+
 })
 
 app.listen(8000, "127.0.0.1")
