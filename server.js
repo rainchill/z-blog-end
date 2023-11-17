@@ -4,7 +4,21 @@ const cors = require('cors')
 var bodyParser = require('body-parser')
 var multer = require('multer')
 const path = require('path')
-const upload = multer({ dest: path.join(__dirname, '/upload') })
+var fs = require('fs')
+var storage = multer.diskStorage({
+    // 文件存储的位置
+    destination: function (req, file, cb) {
+      cb(null, __dirname+'/upload');
+    },
+    // 文件重命名
+    filename: function (req, file, cb) {
+      console.log(file)
+      cb(null,  file.originalname);
+      // cb(null, file.fieldname + '.jpg');
+    }
+  })
+const upload = multer({ storage: storage })
+// const upload = multer({ dest: path.join(__dirname, '/upload') })
 
 var app = express()
 //处理跨域问题
@@ -14,6 +28,7 @@ app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json())
 
 const { Sequelize, DataTypes, Model } = require('sequelize');
+const { constrainedMemory } = require('process')
 
 
 const sequelize = new Sequelize({
@@ -39,69 +54,160 @@ const Articles = sequelize.define('Articles', {
     },
     zcontent: {
         type: DataTypes.TEXT,
-        defaultValue:"xxxxxxxxxxxxxxxxxxx"
+        defaultValue:"xxxxxxxxx\nxxxxxxxxx1111111111111111111111111\n111111112"
     }
 }, {
     freezeTableName: true
 })
 
-Articles.sync()
+const creatForm = async () => {
+    console.log("creat Articles sql table 1111")
+    await Articles.sync({force: true})
+    console.log("creat Articles sql table")
+}
+
+creatForm().then(() => {
+    const t = Articles.build({ ztitle: "asdadad" });
+    t.save()
+})
+function sleep(time){
+    var timeStamp = new Date().getTime();
+    var endTime = timeStamp + time;
+    while(true){
+    if (new Date().getTime() > endTime){
+     return;
+    } 
+    }
+}
 
 const t = Articles.build({ ztitle: "asdadad" });
 t.save()
 
-ret = Articles.findAll({
-    attributes: ['ztitle'],
-    raw: true
-})
+// ret = Articles.findAll({
+//     attributes: ['ztitle'],
+//     raw: true
+// })
+
+// console.log("ret = ", ret)
 
 
-async function getArticleslist(obj) {
-    // 查询所有用户
-    const articles = await Articles.findAll();
-    for( p of articles ) {
-        obj.articleslist.push(p.dataValues.ztitle)
-    }
-}
+
+
 
 // setTimeout(function(){ console.log('----art=', articleslist) }, 1000);
 
 console.log("save success!")
 
 app.get('/articles', function (req, res) {
-    res.send(mockjs.mock({
-            "list|8": [
-            {
-                "id": '@increment(1)',
-                "title": "@ctitle",
-                "content": "@cparagraph",
-                "add_time": "@date(yyyy-MM-dd hh:mm:ss)"
-            }
-            ]
-    }))
+    async function sendArticles(obj) {
+        // 查询所有用户
+        const articles = await Articles.findAll();
+        for( p of articles ) {
+            // 隐藏bug xxx.xxx.xxx
+            
+            obj.articleslist.push(
+                {id: p.dataValues.id, title: p.dataValues.ztitle.split(".")[0], discribe: p.dataValues.zcontent.toString().split('\n')[0]}
+            )
+        }
+        obj.articleslist.reverse()
+        console.log("obj:", obj)
+    }
+
+    x = { articleslist:[] }
+    sendArticles(x).then(() => {
+        console.log("2221111:", x)
+        console.log("send json:", JSON.stringify(x.articleslist))
+        res.send(JSON.stringify(x.articleslist))
+    })
+
+
+    
+
+    // res.send(mockjs.mock({
+    //         "list|8": [
+    //         {
+    //             "id": '@increment(1)',
+    //             "title": "@ctitle",
+    //             "content": "@cparagraph",
+    //             "add_time": "@date(yyyy-MM-dd hh:mm:ss)"
+    //         }
+    //         ]
+    // }))
 })
 
 app.get('/articles/:id', function (req, res) {
     console.log("send page")
-    res.send(mockjs.mock({
-        "title": "@ctitle",
-        "content": "@cparagraph",
-        "add_time": "@date(yyyy-MM-dd hh:mm:ss)"
-    }))
+    // console.log("id=",req.params.id)
+    
+
+    // res.send(mockjs.mock({
+    //     "title": "@ctitle",
+    //     "content": "@cparagraph",
+    //     "add_time": "@date(yyyy-MM-dd hh:mm:ss)"
+    // }))
+    x = { article:{} }
+    async function seeArticle(obj) {
+        const article = await Articles.findOne({ where: { id: req.params.id } })
+        if(article === null) {
+            return
+        }
+        console.log("aaa=",article)
+        obj.article = {"title": article.dataValues.ztitle.split(".")[0], "content": article.dataValues.zcontent}
+        console.log("ooobj=",obj)
+    }
+
+    seeArticle(x).then(() => {
+        res.send(x.article)
+    })
 })
 
 app.post('/api/admin/uploadfile',  upload.single('file'), function (req, res) {
     res.send({ file: "ok" })
-    console.log("req.body:", req.file.originalname)
+
+    if("md" === req.file.filename.split(".")[1]) {
+        fs.readFile("./upload/" + req.file.filename, function(err, data) {
+            if (err) {
+                return console.error(err)
+            }
+            console.log("异步读取:", data.toString())
+            insert_sql = (async () => {
+                console.log("insert sql")
+                await Articles.create({
+                    ztitle: req.file.originalname,
+                    zcontent: data.toString()
+                })
+            })()
+        })
+    }
 })
+
+
+
 
 app.get('/api/admin/articleslist', function (req, res) {
 
+    async function getArticleslist(obj) {
+        // 查询所有用户
+        const articles = await Articles.findAll();
+        for( p of articles ) {
+            // 隐藏bug xxx.xxx.xxx
+            // console.log("p:", p.dataValues.zcontent.toString().split('\n')[0])
+            obj.articleslist.push(p.dataValues.ztitle.split(".")[0])
+        }
+        obj.articleslist.reverse()
+        console.log("obj:", obj)
+    }
+
     x = { articleslist:[] }
     getArticleslist(x).then(() => {
+        console.log("x =", x.articleslist)
         res.send(JSON.stringify(x.articleslist))
     })
 
+})
+
+app.get('/api/admin/delete', function (req, res) {
+    
 })
 
 app.listen(8000, "127.0.0.1")
