@@ -51,7 +51,7 @@ app.use(cors())
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(bodyParser.json())
 
-const { Sequelize, DataTypes, Model } = require('sequelize');
+const { Sequelize, DataTypes, Model, DATE } = require('sequelize');
 const { constrainedMemory } = require('process')
 
 
@@ -74,11 +74,15 @@ const sequelize = new Sequelize({
 const Articles = sequelize.define('Articles', {
     ztitle: {
         type: DataTypes.STRING,
-        defaultValue:"hello"
+        defaultValue: "defaultValue"
     },
     zcontent: {
         type: DataTypes.TEXT,
-        defaultValue:"xxxxxxxxx\nxxxxxxxxx1111111111111111111111111\n111111112"
+        defaultValue:"defaultValue"
+    },
+    zdate: {
+        type: DataTypes.STRING,
+        // defaultValue: new Date()
     }
 }, {
     freezeTableName: true
@@ -91,21 +95,21 @@ const creatForm = async () => {
 }
 
 creatForm().then(() => {
-    const t = Articles.build({ ztitle: "asdadad" });
-    t.save()
+    const t = Articles.build();
+    // t.save()
 })
-function sleep(time){
-    var timeStamp = new Date().getTime();
-    var endTime = timeStamp + time;
-    while(true){
-    if (new Date().getTime() > endTime){
-     return;
-    } 
-    }
-}
+// function sleep(time){
+//     var timeStamp = new Date().getTime();
+//     var endTime = timeStamp + time;
+//     while(true){
+//         if (new Date().getTime() > endTime){
+//             return;
+//         }
+//     }
+// }
 
-const t = Articles.build({ ztitle: "asdadad" });
-t.save()
+// const t = Articles.build({ ztitle: "asdadad" });
+// t.save()
 
 // ret = Articles.findAll({
 //     attributes: ['ztitle'],
@@ -130,7 +134,13 @@ app.get('/articles', function (req, res) {
             // 隐藏bug xxx.xxx.xxx
             
             obj.articleslist.push(
-                {id: p.dataValues.id, title: p.dataValues.ztitle.split(".")[0], discribe: p.dataValues.zcontent.toString().split('\n')[0]}
+                {
+                    "id": p.dataValues.id,
+                    "title": p.dataValues.ztitle.split(".")[0],
+                    "discribe": p.dataValues.zcontent.toString().substr(0, 400),
+                    "date": p.dataValues.zdate
+                }
+                // {id: p.dataValues.id, title: p.dataValues.ztitle.split(".")[0], discribe: p.dataValues.zcontent.split("\r\n")[0]}
             )
         }
         obj.articleslist.reverse()
@@ -196,9 +206,19 @@ app.post('/api/admin/uploadfile',  upload.single('file'), function (req, res) {
             // console.log("异步读取:", data.toString())
             insert_sql = (async () => {
                 console.log("insert sql")
+                article = await Articles.findOne({ where: { ztitle: req.file.filename } })
+                console.log("-----req2222:", data.toString())
+                if (article !== null) {
+                    article.set({
+                        zcontent: data.toString()
+                    })
+                    await article.save();
+                    return
+                }
                 await Articles.create({
                     ztitle: req.file.filename,
-                    zcontent: data.toString()
+                    zcontent: data.toString(),
+                    zdate: new Date().toLocaleDateString('zh-Hans-CN').replace(/\//g, '-')
                 })
             })()
         })
@@ -231,9 +251,12 @@ app.get('/api/admin/articleslist', function (req, res) {
         for( p of articles ) {
             // 隐藏bug xxx.xxx.xxx
             // console.log("p:", p.dataValues.zcontent.toString().split('\n')[0])
-            obj.articleslist.push(p.dataValues.ztitle.split(".")[0])
+            console.log('debug11111', p)
+            // console.log("date:", p.dataValues.zdate)
+            obj.articleslist.push({ "ztitle": p.dataValues.ztitle.split(".")[0], "zdate": p.dataValues.zdate })
         }
         obj.articleslist.reverse()
+        console.log("[ZYH] =", obj.articleslist)
         console.log("obj:", obj)
     }
 
